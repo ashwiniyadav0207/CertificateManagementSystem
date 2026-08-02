@@ -1,0 +1,26 @@
+[Unit]
+Description=NGO Certificate Verification Website
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=certeng
+Group=certeng
+WorkingDirectory=/opt/certificate-verification
+ExecStart=/opt/certificate-verification/CertificateVerification.Web
+Restart=on-failure
+RestartSec=5
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5001
+Environment=ASPNETCORE_ENVIRONMENT=Production
+EnvironmentFile=-/etc/certificate-engine/verification.env
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/opt/certificate-engine/data
+UMask=0077
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

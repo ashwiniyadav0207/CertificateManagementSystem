@@ -1,0 +1,22 @@
+# Caddyfile for the separate public Certificate Verification website.
+#
+# "verify.yourdomain.org" below is a PLACEHOLDER - replace it with your real
+# verification hostname before deploying. DNS for that hostname must already
+# point at this machine, and ports 80/443 must be reachable from the
+# internet, for Caddy's automatic HTTPS (via its built-in ACME/Let's Encrypt
+# client) to succeed.
+#
+# See docs/hosting.md for full setup instructions.
+
+verify.yourdomain.org {
+	encode gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:5001
+	}
+}

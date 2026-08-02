@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>CertificateEngine</RootNamespace>
+    <AssemblyName>CertificateEngine</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Apis.Sheets.v4" />
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="PDFsharp" />
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/Fonts/*.ttf" />
+    <Content Include="Assets/Fonts/OFL.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

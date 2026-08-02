@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # .github lives at the repository root, alongside CertificatePlatform.sln,
+      # so the default working directory (the repo root) already resolves
+      # CertificatePlatform.sln correctly with no working-directory override.
+      - name: Restore
+        run: dotnet restore CertificatePlatform.sln
+
+      - name: Build
+        run: dotnet build CertificatePlatform.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test CertificatePlatform.sln --configuration Release --no-build

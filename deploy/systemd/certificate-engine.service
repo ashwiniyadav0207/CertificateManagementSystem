@@ -1,0 +1,44 @@
+# systemd unit for the NGO Certificate Engine.
+#
+# Install:
+#   sudo cp deploy/systemd/certificate-engine.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now certificate-engine
+#
+# See docs/hosting.md for full setup instructions.
+
+[Unit]
+Description=NGO Certificate Engine
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=certeng
+Group=certeng
+WorkingDirectory=/opt/certificate-engine
+ExecStart=/opt/certificate-engine/CertificateEngine
+Restart=on-failure
+RestartSec=5
+
+# Runtime configuration
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+Environment=ASPNETCORE_ENVIRONMENT=Production
+
+# Secrets such as GoogleSheets__ServiceAccountJsonPath, Smtp__Password,
+# WhatsApp__AccessToken, and Signing__PfxPassword. Leading "-" makes this
+# file optional so the unit still starts without it.
+EnvironmentFile=-/etc/certificate-engine/secrets.env
+
+# Sandboxing: run as an unprivileged, no-login user with minimal filesystem
+# and privilege access.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/certificate-engine/data
+UMask=0077
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

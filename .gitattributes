@@ -1,0 +1,10 @@
+/artifacts/_validation/engine/CertificateEngine.exe filter=lfs diff=lfs merge=lfs -text
+/artifacts/_validation/verification/CertificateVerification.Web.exe filter=lfs diff=lfs merge=lfs -text
+/artifacts/certificate-engine-ca-tool-single-exe-win-x64/CertificateEngine.CaTool.exe filter=lfs diff=lfs merge=lfs -text
+/artifacts/certificate-engine-distribution-win-x64/CertificateEngine.exe filter=lfs diff=lfs merge=lfs -text
+/artifacts/certificate-engine-management-win-x64/CertificateEngine.exe filter=lfs diff=lfs merge=lfs -text
+/artifacts/certificate-engine-single-exe-win-x64/CertificateEngine.exe filter=lfs diff=lfs merge=lfs -text
+/artifacts/certificate-verification-website-win-x64/CertificateVerification.Web.exe filter=lfs diff=lfs merge=lfs -text
+/artifacts/final-testing-project/engine/CertificateEngine.exe filter=lfs diff=lfs merge=lfs -text
+/artifacts/final-testing-project/verification/CertificateVerification.Web.exe filter=lfs diff=lfs merge=lfs -text
+/artifacts/management-release/CertificateEngine.exe filter=lfs diff=lfs merge=lfs -text
