@@ -1,0 +1,2 @@
+C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\certificate-engine-single-exe-win-x64\Assets/Fonts/OFL.txt
+C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\certificate-engine-single-exe-win-x64\CertificateEngine.exe

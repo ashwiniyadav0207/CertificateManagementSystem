@@ -1,0 +1,267 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\tests\\CertificateEngine.Tests\\CertificateEngine.Tests.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\src\\CertificateEngine\\CertificateEngine.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\src\\CertificateEngine\\CertificateEngine.csproj",
+        "projectName": "CertificateEngine",
+        "projectPath": "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\src\\CertificateEngine\\CertificateEngine.csproj",
+        "packagesPath": "C:\\Users\\Harshit\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\src\\CertificateEngine\\obj\\",
+        "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\Harshit\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "framework": "net8.0",
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "allWarningsAsErrors": true,
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "framework": "net8.0",
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Google.Apis.Sheets.v4": {
+              "target": "Package",
+              "version": "[1.75.0.4178, )",
+              "versionCentrallyManaged": true
+            },
+            "MailKit": {
+              "target": "Package",
+              "version": "[4.17.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.Data.Sqlite": {
+              "target": "Package",
+              "version": "[8.0.29, )",
+              "versionCentrallyManaged": true
+            },
+            "PDFsharp": {
+              "target": "Package",
+              "version": "[6.2.4, )",
+              "versionCentrallyManaged": true
+            },
+            "QRCoder": {
+              "target": "Package",
+              "version": "[1.8.0, )",
+              "versionCentrallyManaged": true
+            },
+            "System.Security.Cryptography.Pkcs": {
+              "target": "Package",
+              "version": "[8.0.1, )",
+              "versionCentrallyManaged": true
+            }
+          },
+          "centralPackageVersions": {
+            "coverlet.collector": "6.0.4",
+            "Google.Apis.Sheets.v4": "1.75.0.4178",
+            "MailKit": "4.17.0",
+            "Microsoft.Data.Sqlite": "8.0.29",
+            "Microsoft.NET.Test.Sdk": "17.14.1",
+            "PDFsharp": "6.2.4",
+            "QRCoder": "1.8.0",
+            "System.Security.Cryptography.Pkcs": "8.0.1",
+            "xunit": "2.9.3",
+            "xunit.runner.visualstudio": "3.1.5"
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.29, 8.0.29]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "version": "[8.0.29, 8.0.29]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.29, 8.0.29]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.29, 8.0.29]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.302/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\tests\\CertificateEngine.Tests\\CertificateEngine.Tests.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\tests\\CertificateEngine.Tests\\CertificateEngine.Tests.csproj",
+        "projectName": "CertificateEngine.Tests",
+        "projectPath": "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\tests\\CertificateEngine.Tests\\CertificateEngine.Tests.csproj",
+        "packagesPath": "C:\\Users\\Harshit\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\tests\\CertificateEngine.Tests\\obj\\",
+        "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\Harshit\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "framework": "net8.0",
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\src\\CertificateEngine\\CertificateEngine.csproj": {
+                "projectPath": "C:\\Users\\Harshit\\Downloads\\CERTIFICATE\\CERTIFICATE\\src\\CertificateEngine\\CertificateEngine.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "allWarningsAsErrors": true,
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "framework": "net8.0",
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.NET.Test.Sdk": {
+              "target": "Package",
+              "version": "[17.14.1, )",
+              "versionCentrallyManaged": true
+            },
+            "coverlet.collector": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[6.0.4, )",
+              "versionCentrallyManaged": true
+            },
+            "xunit": {
+              "target": "Package",
+              "version": "[2.9.3, )",
+              "versionCentrallyManaged": true
+            },
+            "xunit.runner.visualstudio": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[3.1.5, )",
+              "versionCentrallyManaged": true
+            }
+          },
+          "centralPackageVersions": {
+            "coverlet.collector": "6.0.4",
+            "Google.Apis.Sheets.v4": "1.75.0.4178",
+            "MailKit": "4.17.0",
+            "Microsoft.Data.Sqlite": "8.0.29",
+            "Microsoft.NET.Test.Sdk": "17.14.1",
+            "PDFsharp": "6.2.4",
+            "QRCoder": "1.8.0",
+            "System.Security.Cryptography.Pkcs": "8.0.1",
+            "xunit": "2.9.3",
+            "xunit.runner.visualstudio": "3.1.5"
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.29, 8.0.29]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.29, 8.0.29]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.29, 8.0.29]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.302/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

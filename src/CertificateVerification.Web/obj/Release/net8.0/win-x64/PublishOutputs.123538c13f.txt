@@ -1,0 +1,4 @@
+C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\_validation\verification\CertificateVerification.Web.pdb
+C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\_validation\verification\aspnetcorev2_inprocess.dll
+C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\_validation\verification\e_sqlite3.dll
+C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\_validation\verification\CertificateVerification.Web.exe
