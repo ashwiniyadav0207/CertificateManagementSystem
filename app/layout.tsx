@@ -30,15 +30,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/images/credentia-logo.svg',
+        url: '/icon.svg',
         type: 'image/svg+xml',
-      },
-      {
-        url: '/favicon.ico',
-        sizes: 'any',
-      },
+      }
     ],
-    apple: '/images/credentia-logo.svg',
+    apple: '/icon.svg',
   },
 }
 
