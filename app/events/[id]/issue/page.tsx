@@ -66,7 +66,10 @@ function IssueContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fullName: recipients[0].name, eventName: params.id }),
         })
-        if (!res.ok) throw new Error("Issue failed")
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || "Issue failed")
+        }
         toast.success("Certificate issued", {
           description: `Certificate created for ${recipients[0].name}.`,
         })
@@ -76,7 +79,10 @@ function IssueContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ recipients, eventName: params.id }),
         })
-        if (!res.ok) throw new Error("Batch issue failed")
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || "Batch issue failed")
+        }
         const results = await res.json()
         const succeeded = results.filter((r: any) => r.success).length
         toast.success("Issuance started", {
