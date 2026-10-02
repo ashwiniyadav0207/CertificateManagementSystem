@@ -67,8 +67,10 @@ function IssueContent() {
           body: JSON.stringify({ fullName: recipients[0].name, eventName: params.id }),
         })
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          throw new Error(data.error || "Issue failed")
+          const raw = await res.text()
+          let errStr = `HTTP ${res.status}: ${raw.slice(0, 60)}`
+          try { errStr = JSON.parse(raw).error || errStr } catch {}
+          throw new Error(errStr)
         }
         toast.success("Certificate issued", {
           description: `Certificate created for ${recipients[0].name}.`,
@@ -80,8 +82,10 @@ function IssueContent() {
           body: JSON.stringify({ recipients, eventName: params.id }),
         })
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          throw new Error(data.error || "Batch issue failed")
+          const raw = await res.text()
+          let errStr = `HTTP ${res.status}: ${raw.slice(0, 60)}`
+          try { errStr = JSON.parse(raw).error || errStr } catch {}
+          throw new Error(errStr)
         }
         const results = await res.json()
         const succeeded = results.filter((r: any) => r.success).length
