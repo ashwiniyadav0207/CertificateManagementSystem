@@ -18,9 +18,9 @@ function makeId() {
 }
 
 export function ManualRecipients({
-  onValidityChange,
+  onChange,
 }: {
-  onValidityChange?: (valid: boolean) => void
+  onChange?: (valid: boolean, recipients: Recipient[]) => void
 }) {
   const [recipients, setRecipients] = useState<Recipient[]>([
     { id: makeId(), name: "", email: "" },
@@ -29,8 +29,8 @@ export function ManualRecipients({
   const hasCompleteRow = recipients.some((r) => r.name.trim() && /.+@.+\..+/.test(r.email.trim()))
 
   useEffect(() => {
-    onValidityChange?.(hasCompleteRow)
-  }, [hasCompleteRow, onValidityChange])
+    onChange?.(hasCompleteRow, recipients)
+  }, [hasCompleteRow, recipients, onChange])
 
   function updateRecipient(id: string, key: "name" | "email", value: string) {
     setRecipients((prev) => prev.map((r) => (r.id === id ? { ...r, [key]: value } : r)))

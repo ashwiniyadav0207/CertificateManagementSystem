@@ -36,6 +36,7 @@ function IssueContent() {
   const [templateId, setTemplateId] = useState(defaultTemplate)
   const [consent, setConsent] = useState(false)
   const [recipientsValid, setRecipientsValid] = useState(false)
+  const [manualRecipients, setManualRecipients] = useState<Recipient[]>([])
   const [mode, setMode] = useState("manual")
   const [submitting, setSubmitting] = useState(false)
   const manualRef = useRef<HTMLFormElement>(null)
@@ -45,17 +46,12 @@ function IssueContent() {
     setSubmitting(true)
 
     try {
-      // Gather recipients from the manual form inputs on the page
-      const formEl = e.currentTarget as HTMLFormElement
-      const nameInputs = formEl.querySelectorAll<HTMLInputElement>('input[name="recipient-name"]')
-      const emailInputs = formEl.querySelectorAll<HTMLInputElement>('input[name="recipient-email"]')
-      const recipients: Recipient[] = []
+      // Gather recipients from the active tab
+      let recipients: Recipient[] = []
       
-      nameInputs.forEach((input, index) => {
-        const name = input.value.trim()
-        const email = emailInputs[index]?.value.trim()
-        if (name) recipients.push({ name, email })
-      })
+      if (mode === "manual") {
+        recipients = manualRecipients.filter(r => r.name.trim())
+      }
 
       if (recipients.length === 0) {
         toast.error("No recipients", { description: "Add at least one recipient before issuing." })
@@ -133,7 +129,10 @@ function IssueContent() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="manual" className="mt-5">
-              <ManualRecipients onValidityChange={setRecipientsValid} />
+              <ManualRecipients onChange={(valid, recs) => {
+                setRecipientsValid(valid)
+                setManualRecipients(recs)
+              }} />
             </TabsContent>
             <TabsContent value="csv" className="mt-5">
               <CsvDropzone onFileAccepted={() => {}} />
