@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Check, Copy, Download } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -50,10 +50,11 @@ export function CredentialActions({
   issuedAt,
 }: CredentialActionsProps) {
   const [copied, setCopied] = useState(false)
-  const verifyUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/credentials/${publicId}`
-      : `/credentials/${publicId}`
+  const [verifyUrl, setVerifyUrl] = useState("")
+
+  useEffect(() => {
+    setVerifyUrl(`${window.location.origin}/credentials/${publicId}`)
+  }, [publicId])
 
   async function copyLink() {
     try {
@@ -73,7 +74,7 @@ export function CredentialActions({
     `&organizationName=${encodeURIComponent("Credentia")}` +
     `&issueYear=${issueDate.getFullYear()}` +
     `&issueMonth=${issueDate.getMonth() + 1}` +
-    `&certUrl=${encodeURIComponent(verifyUrl)}`
+    (verifyUrl ? `&certUrl=${encodeURIComponent(verifyUrl)}` : "")
 
   return (
     <>
