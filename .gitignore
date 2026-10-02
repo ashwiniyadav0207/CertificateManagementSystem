@@ -9,8 +9,13 @@
 *.pem
 service-account*.json
 secrets/
+secrets.env
+*.env
+!secrets.env.example
+!.env.example
 data/
 .env
+.env*.local
 appsettings.Production.json
 TestResults/
 node_modules/
