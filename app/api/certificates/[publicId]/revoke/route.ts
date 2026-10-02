@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getEngineUrl, getApiKey } from '@/lib/api';
+import { revokeCertificate } from '@/lib/server/certificates';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,24 +9,15 @@ export async function POST(
 ) {
   try {
     const { publicId } = await params;
-    const { reason } = await request.json();
-    const engineUrl = getEngineUrl();
-    const apiKey = getApiKey();
-    
-    const response = await fetch(`${engineUrl}/internal/certificates/${publicId}/revoke`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
-      },
-      body: JSON.stringify({ reason }),
-    });
-    
-    if (!response.ok) {
-      return NextResponse.json({ error: 'Revocation failed' }, { status: response.status });
+    const body = await request.json().catch(() => ({}));
+    const reason = body?.reason || "Revoked by administrative authority";
+
+    const success = revokeCertificate(publicId, reason);
+    if (!success) {
+      return NextResponse.json({ error: 'Certificate not found or already revoked' }, { status: 404 });
     }
-    
-    return NextResponse.json({ success: true });
+
+    return NextResponse.json({ success: true, status: 'Revoked', revocationReason: reason });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

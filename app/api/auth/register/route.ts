@@ -1,31 +1,45 @@
 import { NextResponse } from 'next/server';
-import { getEngineUrl, getApiKey } from '@/lib/api';
+import { findUserByEmail, createUser, hashPassword, generateToken } from '@/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const engineUrl = getEngineUrl();
-    const apiKey = getApiKey();
-
-    const response = await fetch(`${engineUrl}/internal/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const status = response.status;
-      const msg = status === 409 ? 'An account with this email already exists' : 'Registration failed';
-      return NextResponse.json({ error: msg }, { status });
+    const { name, email, password } = await request.json();
+    if (!name || !email || !password) {
+      return NextResponse.json({ error: 'Name, email, and password are required.' }, { status: 400 });
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    const existing = findUserByEmail(email);
+    if (existing) {
+      return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
+    }
+
+    const hash = hashPassword(password);
+    const user = createUser(name, email, hash, 'admin');
+
+    const accessToken = generateToken();
+    const refreshToken = generateToken();
+
+    const data = {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    };
+
+    const res = NextResponse.json(data);
+    res.cookies.set('credentia-session', '1', {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    return res;
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

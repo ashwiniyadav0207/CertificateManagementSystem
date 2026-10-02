@@ -1,31 +1,26 @@
 import { NextResponse } from 'next/server';
-import { getEngineUrl, getApiKey } from '@/lib/api';
+import { issueSingleCertificate } from '@/lib/server/issuer';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { fullName, eventId, eventName } = body;
-    const engineUrl = getEngineUrl();
-    const apiKey = getApiKey();
-    
-    const response = await fetch(`${engineUrl}/internal/demo/issue`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
-      },
-      body: JSON.stringify({ fullName, eventId, eventName }),
-    });
-    
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      return NextResponse.json({ error: errText || 'Issuing failed' }, { status: response.status });
+    const { fullName, eventId, eventName, email, phone } = body;
+
+    if (!fullName || typeof fullName !== 'string' || !fullName.trim()) {
+      return NextResponse.json({ error: 'FullName is required.' }, { status: 400 });
     }
-    
-    const data = await response.json();
-    return NextResponse.json(data);
+
+    const result = await issueSingleCertificate({
+      fullName: fullName.trim(),
+      eventId: eventId?.trim(),
+      eventName: eventName?.trim(),
+      email: email?.trim(),
+      phone: phone?.trim(),
+    });
+
+    return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

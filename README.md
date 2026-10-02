@@ -1,10 +1,10 @@
-# NGO Certificate Operations & Verification Platform
+# NGO Certificate Operations & Independent Verification Platform
 
-A production-ready, self-hosted certificate issuance and cryptographic verification system designed specifically for NGOs, training cohorts, and educational non-profits.
+A production-ready, self-hosted certificate issuance and cryptographic verification platform designed specifically for NGOs, training cohorts, and educational non-profits.
 
-The platform provides **two streamlined interfaces**:
-1. **NGO Admin Operations Console** (`http://localhost:3000`): A private, authenticated management portal for staff to create cohorts, issue certificates (via manual input, CSV upload, or automated Google Sheets polling), download signed PDFs, and manage revocations.
-2. **Independent Verification Portal** (`http://localhost:5001`): A public, fast, and tamper-evident portal where employers, partners, and participants verify certificates via QR code or certificate ID against the organization's offline Root Certificate Authority.
+The platform provides **two specialized services** powered by **one unified Next.js design system**:
+1. **NGO Admin Operations Console** (`http://localhost:3000`): A private, authenticated management portal for NGO staff to create cohorts, issue certificates (via manual input or CSV batch upload), download cryptographically signed PDFs, and manage revocations.
+2. **Independent Cryptographic Verification Service** (`http://localhost:5001`): An independent verification service that cryptographically validates attached CMS detached digital signatures (`.p7s`) and SHA-256 artifact hashes against the organization's offline Root Certificate Authority, with browser visitors seamlessly viewing the unified dark-themed Next.js verification stage (`http://localhost:3000/verify/{id}`).
 
 ---
 
@@ -12,34 +12,36 @@ The platform provides **two streamlined interfaces**:
 
 ```mermaid
 flowchart TD
-    subgraph NGO ["NGO Internal Operations"]
+    subgraph NGOConsole ["Service 1: NGO Admin Console (Next.js - Port 3000)"]
         Staff[NGO Staff / Coordinators]
-        AdminUI[NGO Admin Console<br/>Next.js 16 - Port 3000]
+        AdminUI[NGO Admin Portal<br/>Protected /events, /certificates]
         Staff -->|Authenticate & Manage| AdminUI
-        CSV[CSV Recipient Dropzone] -->|Upload list| AdminUI
-        Manual[Manual Entry Form] -->|Single/Batch| AdminUI
-        GSheets[Google Sheets / Forms] -->|Auto-sync / Poll| Engine
+        CSV[CSV Recipient Dropzone] -->|Batch Issuance| AdminUI
+        Manual[Manual Entry Form] -->|Single Issuance| AdminUI
+        DB[(Local SQLite Ledger<br/>certificates.db & users)]
+        AdminUI -->|Direct Queries node:sqlite| DB
+        CLI[One-Shot Signer CLI<br/>CertificateEngine.dll]
+        AdminUI -->|Execute on-demand| CLI
+        CLI --> PDF[Signed PDF & .p7s<br/>X.509 RSA-4096 / SHA-256]
+        CLI --> DB
     end
 
-    subgraph Backend ["Core Certificate Engine"]
-        Engine[CertificateEngine<br/>ASP.NET Core 8 - Port 5000]
-        AdminUI -->|Internal API with X-Api-Key| Engine
-        Engine --> PDF[Generate PDF & Embed QR]
-        Engine --> Sign[CMS Digital Signature<br/>RSA-4096 / SHA-256]
-        Engine --> DB[(SQLite Database<br/>certificates.db & users)]
-        Engine --> Delivery[Email & WhatsApp Relay]
-    end
-
-    subgraph PublicPortal ["Independent Public Verification"]
+    subgraph IndependentVerify ["Service 2: Independent Verification (Port 5001)"]
         Verifier[Participant / Employer / Verifier]
-        QR[Scan QR on PDF Certificate]
-        VerifyWeb[Verification Portal<br/>CertificateVerification.Web - Port 5001]
+        VerifyWeb[CertificateVerification.Web<br/>Port 5001]
         RootCA[(Offline Root CA<br/>root-ca.pem)]
+        
+        Verifier -->|Scan QR or Check ID| VerifyWeb
+        VerifyWeb -->|Cryptographic Verification API<br/>GET /api/verify/{id}| DB
+        VerifyWeb -->|Custom Root Trust Chain Check| RootCA
+        VerifyWeb -.->|Browser Redirect 302| UnifiedUI[Unified Verification UI<br/>http://localhost:3000/verify/{id}]
+    end
 
-        Verifier -->|Enter Cert ID| VerifyWeb
-        QR -->|Direct URL Scan| VerifyWeb
-        VerifyWeb -->|Read-only lookup| DB
-        VerifyWeb -->|Cryptographic trust chain check| RootCA
+    subgraph UnifiedUIStage ["Single Unified UI System (Next.js)"]
+        UnifiedUI --> Stage[3D CertStage & Ambient Tilt]
+        UnifiedUI --> Wax[Official 3D Wax Seal]
+        UnifiedUI --> Proof[Evervault Cryptographic Card<br/>Live Hash & Digital Signature Status]
+        UnifiedUI --> Actions[Download Official PDF<br/>Print • Share • LinkedIn]
     end
 ```
 
@@ -53,31 +55,30 @@ The Admin Console is password-protected and accessible only to authorized NGO co
 
 #### 1. Cohort & Event Management (`/events`)
 - Track all ongoing and completed training cohorts.
-- View real-time progress bars (`issuedCount / totalCount`).
+- View real-time issuance progress bars (`issuedCount / totalCount`).
 - Create new cohorts with customized certificate design templates (`/events/new`).
 
 #### 2. Recipient Credential Issuance (`/events/{id}/issue`)
 - **Manual Input**: Add recipient names, emails, and phone numbers directly.
-- **CSV Upload**: Drop any standard spreadsheet CSV with `Name` and `Email` columns. The parser automatically validates recipient rows and enables one-click batch issuance.
-- **Google Sheets Sync**: Connect Google Form responses for automated background polling or trigger immediate synchronization with the **Sync Responses** button.
+- **CSV Batch Upload**: Drop any standard spreadsheet CSV with `Name` and `Email` columns. The client-side parser automatically validates recipient rows and enables one-click batch issuance with cryptographic signing executed in milliseconds.
 
 #### 3. Complete Certificate Registry (`/certificates`)
 - Comprehensive audit log of every credential ever issued.
 - Live keyword search by recipient name, email, or certificate number.
 - Filter by status (`All`, `Issued`, `Revoked`).
 - **Direct PDF Download**: Instantly download the cryptographically signed certificate PDF.
-- **Verify**: One-click link to open the certificate in the independent verification portal.
+- **Verify**: One-click link to open the certificate in the verification stage.
 - **Auditable Revocation**: Revoke any certificate with a mandatory reason (e.g. "Issued in error" or "Requirements not met"). Revocations are reflected immediately across all verification checkpoints.
 
 ---
 
-## 2. Independent Public Verification Portal (`Port 5001`)
+## 2. Independent Public Verification Service (`Port 5001`)
 
-The Verification Portal operates completely independently of the administrative console:
+The Verification Service operates as an independent cryptographic trust anchor:
 - **Zero-Login Required**: Anyone holding a certificate can verify it instantly without an account.
 - **Tamper-Evident Security**: Evaluates the attached `.p7s` Cryptographic Message Syntax (CMS) digital signature and checks the SHA-256 hash of the PDF artifact.
 - **Custom Root CA Trust**: Validates the cryptographic chain against the organization's offline Root CA (`data/ca/root-ca.pem`).
-- **Real-Time Revocation Checks**: If a certificate has been revoked by an administrator, the verification badge clearly displays **Revoked** alongside the official revocation timestamp and reason.
+- **Unified UI**: Browser users visiting `http://localhost:5001/verify/{id}` or `http://localhost:5001/` are seamlessly routed to the rich Next.js verification stage (`http://localhost:3000/verify/{id}`), featuring 3D tilt presentation, wax seal, PDF download, and Evervault cryptographic proof.
 
 ---
 
@@ -95,37 +96,29 @@ dotnet run --project tools/CertificateEngine.CaTool -- init \
   --organization "Your NGO Name" \
   --out data/ca \
   --root-years 20 \
-  --signing-years 2
+  --signing-years 2 \
+  --root-password "RootPassword123!" \
+  --signing-password "SigningPassword123!" \
+  --force
 ```
 *Note: This creates `data/ca/root-ca.pem`, `data/ca/root-ca.pfx`, and `data/ca/signing.pfx`. Keep `root-ca.pfx` secure and move it to cold storage for production.*
 
-### 2. Configure Secrets & Environment
-Set up `secrets.env` for the backend and `.env.local` for the Next.js frontend:
+### 2. Configure Environment (`.env.local`)
+Create `.env.local` for the Next.js frontend:
 ```bash
-# Backend secrets
-export CA_SIGNING_PASSWORD="<Your-Signing-Password>"
-export Signing__PfxPassword="<Your-Signing-Password>"
-export Platform__InternalApiKey="local-testing-key-change-before-production-2026"
-
-# Frontend config (.env.local)
-ENGINE_URL=http://localhost:5000
-ENGINE_API_KEY=local-testing-key-change-before-production-2026
 VERIFICATION_URL=http://localhost:5001
 NEXT_PUBLIC_VERIFICATION_URL=http://localhost:5001
 ```
 
-### 3. Run the Platform
+### 3. Run the Platform (Exactly Two Services)
 
-Start all three services (in separate terminals or as systemd/docker services):
+Start the two services in separate terminals:
 
 ```bash
-# 1. Start Core Backend Engine (Port 5000)
-env $(grep -v '^#' secrets.env | xargs) dotnet run --project src/CertificateEngine --urls "http://localhost:5000"
-
-# 2. Start Public Verification Portal (Port 5001)
+# Terminal 1: Independent Cryptographic Verification Service (Port 5001)
 dotnet run --project src/CertificateVerification.Web --urls "http://localhost:5001"
 
-# 3. Start NGO Admin Operations Console (Port 3000)
+# Terminal 2: NGO Admin Operations & Verification UI (Port 3000)
 npx pnpm dev
 ```
 
@@ -137,12 +130,12 @@ Default administrative account for testing:
 
 ## Running Automated Tests
 
-Run the full automated test suite covering PBKDF2 hashing, user security, event aggregation, and certificate queries:
+Run the full automated test suite:
 ```bash
 dotnet test CertificatePlatform.sln
 ```
 
-Verify Next.js frontend production build:
+Verify Next.js production build:
 ```bash
 npx pnpm build
 ```

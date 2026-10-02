@@ -1,32 +1,31 @@
 import { NextResponse } from 'next/server';
-import { getEngineUrl, getApiKey } from '@/lib/api';
+import { getDb } from '@/lib/server/db';
+import { getVerificationUrl } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const engineUrl = getEngineUrl();
-    const apiKey = getApiKey();
-    
-    const response = await fetch(`${engineUrl}/internal/health`, {
-      headers: {
-        'X-Api-Key': apiKey,
+    const db = getDb();
+    const row = db.prepare("SELECT count(*) as count FROM certificates").get() as { count: number };
+
+    let verificationOnline = false;
+    try {
+      const vRes = await fetch(`${getVerificationUrl()}/favicon.ico`, { cache: 'no-store' });
+      verificationOnline = vRes.ok;
+    } catch {
+      verificationOnline = false;
+    }
+
+    return NextResponse.json({
+      status: 'ok',
+      mode: 'ngo-admin-direct',
+      totalCertificates: row.count,
+      services: {
+        adminConsole: 'online',
+        independentVerification: verificationOnline ? 'online' : 'unreachable',
       },
     });
-    
-    if (!response.ok) {
-      return NextResponse.json({ error: 'Health check failed' }, { status: response.status });
-    }
-    
-    const data = await response.text();
-    let jsonData = {};
-    try {
-      jsonData = data ? JSON.parse(data) : {};
-    } catch (e) {
-      // response might not be json
-      jsonData = { status: data };
-    }
-    return NextResponse.json(jsonData);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

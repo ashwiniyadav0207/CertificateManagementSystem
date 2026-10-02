@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getEngineUrl, getApiKey } from '@/lib/api';
+import { getEventDetail } from '@/lib/server/certificates';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,24 +9,16 @@ export async function GET(
 ) {
   try {
     const { eventId } = await params;
-    const engineUrl = getEngineUrl();
-    const apiKey = getApiKey();
     const { searchParams } = new URL(request.url);
-    const page = searchParams.get('page') || '1';
-    const pageSize = searchParams.get('pageSize') || '50';
-    
-    const response = await fetch(`${engineUrl}/internal/events/${eventId}?page=${page}&pageSize=${pageSize}`, {
-      headers: {
-        'X-Api-Key': apiKey,
-      },
-    });
-    
-    if (!response.ok) {
-      return NextResponse.json({ error: 'Failed to fetch event details' }, { status: response.status });
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(searchParams.get('pageSize') || '50', 10);
+
+    const detail = getEventDetail(eventId, page, pageSize);
+    if (!detail) {
+      return NextResponse.json({ error: `Event '${eventId}' not found.` }, { status: 404 });
     }
-    
-    const data = await response.json();
-    return NextResponse.json(data);
+
+    return NextResponse.json(detail);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

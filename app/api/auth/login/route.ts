@@ -1,31 +1,34 @@
 import { NextResponse } from 'next/server';
-import { getEngineUrl, getApiKey } from '@/lib/api';
+import { findUserByEmail, verifyPassword, generateToken } from '@/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const engineUrl = getEngineUrl();
-    const apiKey = getApiKey();
-
-    const response = await fetch(`${engineUrl}/internal/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: response.status }
-      );
+    const { email, password } = await request.json();
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
     }
 
-    const data = await response.json();
+    const user = findUserByEmail(email);
+    if (!user || !verifyPassword(password, user.password_hash)) {
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    }
+
+    const accessToken = generateToken();
+    const refreshToken = generateToken();
+
+    const data = {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    };
+
     const res = NextResponse.json(data);
     res.cookies.set('credentia-session', '1', {
       path: '/',

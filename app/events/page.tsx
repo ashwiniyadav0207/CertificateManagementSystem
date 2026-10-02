@@ -6,21 +6,17 @@ import { Progress } from "@/components/ui/progress"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty"
 import { formatDate } from "@/lib/format"
 import { resolveTemplate } from "@/lib/templates"
-import { getEngineUrl, getApiKey } from "@/lib/api"
 import type { EventSummary } from "@/lib/types"
+import { getEventSummaries } from "@/lib/server/certificates"
 
 async function fetchEvents(): Promise<EventSummary[]> {
   try {
-    const res = await fetch(`${getEngineUrl()}/internal/events`, {
-      headers: { "X-Api-Key": getApiKey() },
-      cache: "no-store",
-    })
-    if (!res.ok) return []
-    return (await res.json()) as EventSummary[]
+    return getEventSummaries()
   } catch {
     return []
   }
 }
+
 
 export default async function EventsPage() {
   const events = await fetchEvents()

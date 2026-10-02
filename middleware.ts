@@ -3,22 +3,20 @@ import type { NextRequest } from "next/server"
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
-  const verificationBase = process.env.VERIFICATION_URL || "http://localhost:5001"
 
-  // 1. Direct any verification attempts to the single official verification portal
-  if (pathname.startsWith("/credentials/") || pathname.startsWith("/verify/")) {
-    const id = pathname.replace(/^\/(credentials|verify)\//, "")
-    if (id) {
-      return NextResponse.redirect(`${verificationBase}/verify/${encodeURIComponent(id)}`, 307)
-    }
-    return NextResponse.redirect(verificationBase, 307)
+  // 1. Allow public verification portal and public credentials showcase
+  if (
+    pathname === "/verify" ||
+    pathname.startsWith("/verify/") ||
+    pathname.startsWith("/credentials/")
+  ) {
+    return NextResponse.next()
   }
 
-  // 2. Allow static assets and public APIs
+  // 2. Allow static assets, public APIs, and certificate downloads
   if (
     pathname.startsWith("/_next/") ||
-    pathname.startsWith("/api/auth/") ||
-    pathname === "/api/health" ||
+    pathname.startsWith("/api/") ||
     pathname.includes(".")
   ) {
     return NextResponse.next()

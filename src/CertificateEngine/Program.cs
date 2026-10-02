@@ -11,6 +11,9 @@ using Microsoft.Extensions.Options;
 using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration
+    .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true)
+    .AddJsonFile(Path.Combine(Directory.GetCurrentDirectory(), "src/CertificateEngine/appsettings.json"), optional: true);
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -37,6 +40,150 @@ builder.Services.AddCertificateDelivery(builder.Configuration);
 var app = builder.Build();
 app.UseCors();
 await app.Services.GetRequiredService<CertificateDatabase>().InitializeAsync(CancellationToken.None);
+
+if (args.Length > 0 && (args[0] == "issue" || args[0] == "issue-batch"))
+{
+    var repository = app.Services.GetRequiredService<CertificateRepository>();
+    var artifacts = app.Services.GetRequiredService<CertificateArtifactService>();
+    var options = app.Services.GetRequiredService<IOptions<PlatformOptions>>();
+
+    string jsonPayload;
+    if (args.Length > 1)
+    {
+        jsonPayload = args[1];
+    }
+    else
+    {
+        using var reader = new StreamReader(Console.OpenStandardInput());
+        jsonPayload = await reader.ReadToEndAsync();
+    }
+
+    var jsonOpts = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+
+    if (args[0] == "issue")
+    {
+        var body = System.Text.Json.JsonSerializer.Deserialize<DemoIssueRequest>(jsonPayload, jsonOpts);
+        if (body is null || string.IsNullOrWhiteSpace(body.FullName))
+        {
+            Console.Error.WriteLine("Error: FullName is required.");
+            return 1;
+        }
+
+        var targetEventId = string.IsNullOrWhiteSpace(body.EventId)
+            ? (options.Value.Events.Count > 0 ? options.Value.Events[0].EventId : "general-cohort")
+            : body.EventId.Trim();
+
+        var configuredEvent = options.Value.Events.FirstOrDefault(e => string.Equals(e.EventId, targetEventId, StringComparison.OrdinalIgnoreCase));
+        var eventOptions = configuredEvent ?? new EventSourceOptions
+        {
+            EventId = targetEventId,
+            EventName = string.IsNullOrWhiteSpace(body.EventName)
+                ? (targetEventId == "local-demo" ? "Local testing event" : targetEventId)
+                : body.EventName.Trim(),
+            TemplateId = "default"
+        };
+
+        var sourceId = Guid.NewGuid().ToString("N");
+        var submission = new SheetSubmission(
+            eventOptions.EventId,
+            eventOptions.EventName,
+            string.Empty,
+            string.Empty,
+            0,
+            new Participant(sourceId, body.FullName.Trim(), body.Email?.Trim(), body.Phone?.Trim()),
+            sourceId,
+            null,
+            new Dictionary<string, string>());
+
+        var (certificate, _) = await repository.GetOrCreateAsync(submission, eventOptions, CancellationToken.None);
+        var artifact = await artifacts.CreateAsync(certificate, CancellationToken.None);
+        await repository.MarkIssuedAsync(certificate.Id, artifact.ArtifactPath, artifact.Sha256, artifact.SignerThumbprint, eventOptions, CancellationToken.None);
+
+        var result = new
+        {
+            publicId = certificate.PublicId,
+            certificateNumber = certificate.CertificateNumber,
+            verifyPath = $"/verify/{certificate.PublicId}",
+            artifactPath = artifact.ArtifactPath,
+            artifactSha256 = artifact.Sha256
+        };
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(result));
+        return 0;
+    }
+    else if (args[0] == "issue-batch")
+    {
+        var body = System.Text.Json.JsonSerializer.Deserialize<BatchIssueRequest>(jsonPayload, jsonOpts);
+        if (body?.Recipients is null || body.Recipients.Count == 0)
+        {
+            Console.Error.WriteLine("Error: Recipients list is required.");
+            return 1;
+        }
+
+        var targetEventId = string.IsNullOrWhiteSpace(body.EventId)
+            ? (options.Value.Events.Count > 0 ? options.Value.Events[0].EventId : "general-cohort")
+            : body.EventId.Trim();
+
+        var configuredEvent = options.Value.Events.FirstOrDefault(e => string.Equals(e.EventId, targetEventId, StringComparison.OrdinalIgnoreCase));
+        var eventOptions = configuredEvent ?? new EventSourceOptions
+        {
+            EventId = targetEventId,
+            EventName = string.IsNullOrWhiteSpace(body.EventName)
+                ? (targetEventId == "local-demo" ? "Local testing event" : targetEventId)
+                : body.EventName.Trim(),
+            TemplateId = string.IsNullOrWhiteSpace(body.TemplateId) ? "default" : body.TemplateId.Trim()
+        };
+
+        var results = new List<object>();
+        foreach (var recipient in body.Recipients)
+        {
+            if (string.IsNullOrWhiteSpace(recipient.Name)) continue;
+            try
+            {
+                var sourceId = Guid.NewGuid().ToString("N");
+                var submission = new SheetSubmission(
+                    eventOptions.EventId,
+                    eventOptions.EventName,
+                    string.Empty,
+                    string.Empty,
+                    0,
+                    new Participant(sourceId, recipient.Name.Trim(), recipient.Email?.Trim(), recipient.Phone?.Trim()),
+                    sourceId,
+                    null,
+                    new Dictionary<string, string>());
+
+                var (cert, _) = await repository.GetOrCreateAsync(submission, eventOptions, CancellationToken.None);
+                var artifact = await artifacts.CreateAsync(cert, CancellationToken.None);
+                await repository.MarkIssuedAsync(cert.Id, artifact.ArtifactPath, artifact.Sha256, artifact.SignerThumbprint, eventOptions, CancellationToken.None);
+                results.Add(new
+                {
+                    publicId = cert.PublicId,
+                    certificateNumber = cert.CertificateNumber,
+                    recipientName = cert.ParticipantName,
+                    status = "Issued",
+                    verifyPath = $"/verify/{cert.PublicId}"
+                });
+            }
+            catch (Exception ex)
+            {
+                results.Add(new
+                {
+                    recipientName = recipient.Name,
+                    status = "Failed",
+                    error = ex.Message
+                });
+            }
+        }
+
+        var response = new
+        {
+            totalProcessed = body.Recipients.Count,
+            issuedCount = results.Count(r => ((dynamic)r).status == "Issued"),
+            results
+        };
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(response));
+        return 0;
+    }
+}
 
 bool Authorized(HttpRequest request, IOptions<PlatformOptions> options) => request.Headers.TryGetValue("X-Api-Key", out var key) && key.Count == 1 && string.Equals(key[0], options.Value.InternalApiKey, StringComparison.Ordinal);
 bool ManagementAuthorized(HttpContext context, IOptions<PlatformOptions> options) =>
@@ -330,4 +477,13 @@ app.MapPost("/internal/certificates/{publicId}/revoke", async (string publicId, 
 
 app.MapGet("/internal/audit/verify", async (HttpRequest request, IOptions<PlatformOptions> options, CertificateRepository repository, CancellationToken ct) => Authorized(request, options) ? Results.Ok(await repository.VerifyAuditChainAsync(ct)) : Results.Unauthorized());
 
-await app.RunAsync();
+if (args.Contains("--serve"))
+{
+    await app.RunAsync();
+    return 0;
+}
+else
+{
+    Console.WriteLine("CertificateEngine CLI ready. Background daemon disabled. Use 'issue' or 'issue-batch' to issue credentials.");
+    return 0;
+}

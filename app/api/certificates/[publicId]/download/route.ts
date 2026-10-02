@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getEngineUrl, getApiKey } from '@/lib/api';
+import fs from 'node:fs';
+import { getCertificatePdfPath } from '@/lib/server/certificates';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,26 +10,20 @@ export async function GET(
 ) {
   try {
     const { publicId } = await params;
-    const engineUrl = getEngineUrl();
-    const apiKey = getApiKey();
+    const pdfPath = getCertificatePdfPath(publicId);
     
-    const response = await fetch(`${engineUrl}/manage/certificates/${publicId}/download`, {
-      headers: {
-        'X-Api-Key': apiKey,
-      },
-    });
-    
-    if (!response.ok) {
-      return NextResponse.json({ error: 'Download failed' }, { status: response.status });
+    if (!pdfPath || !fs.existsSync(pdfPath)) {
+      return NextResponse.json({ error: 'Certificate PDF artifact not found' }, { status: 404 });
     }
-    
-    // Stream the PDF response back
-    const blob = await response.blob();
-    const headers = new Headers(response.headers);
-    
-    return new NextResponse(blob, {
-      status: response.status,
-      headers,
+
+    const fileBuffer = fs.readFileSync(pdfPath);
+    return new NextResponse(fileBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="certificate-${publicId}.pdf"`,
+        'Content-Length': fileBuffer.length.toString(),
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

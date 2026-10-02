@@ -1,29 +1,22 @@
 import { NextResponse } from 'next/server';
-import { getEngineUrl, getApiKey } from '@/lib/api';
+import { generateToken } from '@/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const engineUrl = getEngineUrl();
-    const apiKey = getApiKey();
-
-    const response = await fetch(`${engineUrl}/internal/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      return NextResponse.json({ error: 'Token refresh failed' }, { status: response.status });
+    const { refreshToken } = await request.json();
+    if (!refreshToken) {
+      return NextResponse.json({ error: 'Refresh token is required.' }, { status: 400 });
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    const accessToken = generateToken();
+    const newRefreshToken = generateToken();
+
+    return NextResponse.json({
+      accessToken,
+      refreshToken: newRefreshToken,
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

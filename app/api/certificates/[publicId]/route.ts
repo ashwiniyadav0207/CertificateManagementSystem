@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getVerificationUrl } from '@/lib/api';
+import { getCertificateByPublicId } from '@/lib/server/certificates';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,16 +9,11 @@ export async function GET(
 ) {
   try {
     const { publicId } = await params;
-    const verificationUrl = getVerificationUrl();
-    
-    const response = await fetch(`${verificationUrl}/api/verify/${publicId}`);
-    
-    if (!response.ok) {
-      return NextResponse.json({ error: 'Verification failed' }, { status: response.status });
+    const cert = getCertificateByPublicId(publicId);
+    if (!cert) {
+      return NextResponse.json({ error: 'Certificate not found' }, { status: 404 });
     }
-    
-    const data = await response.json();
-    return NextResponse.json(data);
+    return NextResponse.json(cert);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
