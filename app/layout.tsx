@@ -27,7 +27,6 @@ export const metadata: Metadata = {
   title: 'Credentia — Certificate Management',
   description:
     'Issue, sign, and verify tamper-evident digital certificates for your events and programs.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
