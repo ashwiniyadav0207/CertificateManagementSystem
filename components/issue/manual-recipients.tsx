@@ -56,12 +56,14 @@ export function ManualRecipients({
           {recipients.map((recipient, index) => (
             <div key={recipient.id} className="grid grid-cols-[1fr_1fr_auto] items-center gap-3 px-4 py-2.5">
               <Input
+                name="recipient-name"
                 placeholder="Jordan Ellery"
                 value={recipient.name}
                 onChange={(e) => updateRecipient(recipient.id, "name", e.target.value)}
                 aria-label={`Recipient ${index + 1} name`}
               />
               <Input
+                name="recipient-email"
                 type="email"
                 placeholder="jordan@example.com"
                 value={recipient.email}

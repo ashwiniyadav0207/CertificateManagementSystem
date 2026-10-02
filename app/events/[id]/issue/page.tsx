@@ -48,10 +48,13 @@ function IssueContent() {
       // Gather recipients from the manual form inputs on the page
       const formEl = e.currentTarget as HTMLFormElement
       const nameInputs = formEl.querySelectorAll<HTMLInputElement>('input[name="recipient-name"]')
+      const emailInputs = formEl.querySelectorAll<HTMLInputElement>('input[name="recipient-email"]')
       const recipients: Recipient[] = []
-      nameInputs.forEach((input) => {
+      
+      nameInputs.forEach((input, index) => {
         const name = input.value.trim()
-        if (name) recipients.push({ name })
+        const email = emailInputs[index]?.value.trim()
+        if (name) recipients.push({ name, email })
       })
 
       if (recipients.length === 0) {
