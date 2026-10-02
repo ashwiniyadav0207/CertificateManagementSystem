@@ -1,14 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
-import { Loader2, Mail, Lock } from "lucide-react"
+import { Loader2, Mail, Lock, ShieldAlert } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui/input-group"
-import { Separator } from "@/components/ui/separator"
-import { GoogleIcon } from "@/components/auth/google-icon"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { login } from "@/lib/auth"
 
@@ -21,9 +18,9 @@ export default function LoginPage() {
     const email = String(data.get("email") ?? "").trim()
     const password = String(data.get("password") ?? "")
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 6) {
       toast.error("Check your details", {
-        description: "Use a valid email and a password with at least 8 characters.",
+        description: "Please enter a valid email address and password.",
       })
       return
     }
@@ -37,7 +34,7 @@ export default function LoginPage() {
       window.location.href = "/events"
     } catch (err: any) {
       toast.error("Login failed", {
-        description: err.message || "Please check your credentials and try again.",
+        description: err.message || "Invalid credentials. Please check your email and password.",
       })
       setSubmitting(false)
     }
@@ -45,21 +42,19 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Welcome back"
-      description="Log in to manage your events and credentials."
+      title="NGO Operations Console"
+      description="Authorized staff access for certificate issuance, cohort tracking, and verification management."
       footer={
-        <>
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="font-medium text-primary hover:underline">
-            Create one
-          </Link>
-        </>
+        <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/80">
+          <ShieldAlert className="size-3.5" />
+          <span>Restricted system &bull; All administrative actions are cryptographically signed</span>
+        </div>
       }
     >
       <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <FieldLabel htmlFor="email">Staff Email Address</FieldLabel>
             <InputGroup>
               <InputGroupAddon>
                 <Mail data-icon="inline-start" />
@@ -69,7 +64,8 @@ export default function LoginPage() {
                 name="email"
                 type="email"
                 autoComplete="email"
-                placeholder="you@company.com"
+                placeholder="admin@credentia.local"
+                defaultValue="admin@credentia.local"
                 required
                 disabled={submitting}
               />
@@ -77,12 +73,7 @@ export default function LoginPage() {
           </Field>
 
           <Field>
-            <div className="flex items-center justify-between">
-              <FieldLabel htmlFor="password">Password</FieldLabel>
-              <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">
-                Forgot password?
-              </Link>
-            </div>
+            <FieldLabel htmlFor="password">Password</FieldLabel>
             <InputGroup>
               <InputGroupAddon>
                 <Lock data-icon="inline-start" />
@@ -100,26 +91,15 @@ export default function LoginPage() {
           </Field>
         </FieldGroup>
 
-        <Button type="submit" size="lg" className="mt-1 w-full" disabled={submitting}>
+        <Button type="submit" size="lg" className="mt-2 w-full" disabled={submitting}>
           {submitting ? (
             <>
               <Loader2 data-icon="inline-start" className="animate-spin" />
-              Logging in…
+              Signing in…
             </>
           ) : (
-            "Log in"
+            "Sign In to Operations Console"
           )}
-        </Button>
-
-        <div className="flex items-center gap-3">
-          <Separator className="flex-1" />
-          <span className="text-xs text-muted-foreground">OR</span>
-          <Separator className="flex-1" />
-        </div>
-
-        <Button type="button" variant="outline" size="lg" className="w-full" disabled={submitting}>
-          <GoogleIcon className="size-4" data-icon="inline-start" />
-          Continue with Google
         </Button>
       </form>
     </AuthShell>

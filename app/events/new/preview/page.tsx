@@ -15,7 +15,13 @@ function PreviewContent() {
   const searchParams = useSearchParams()
   const templateId = searchParams.get("template") ?? credentialTemplates[0].id
   const template = credentialTemplates.find((t) => t.id === templateId) ?? credentialTemplates[0]
-  const eventName = loadDraft()?.name ?? "Your Event Name"
+  const draft = loadDraft()
+  const eventName = draft?.name ?? "Your Event Name"
+  const eventSlug = eventName
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "") || `event-${Date.now()}`
 
   return (
     <AppShell>
@@ -41,10 +47,10 @@ function PreviewContent() {
           <CertificatePreview
             className="rise"
             template={template}
-            recipientName="John Doe"
+            recipientName="Sample Recipient"
             eventName={eventName}
-            issueDate="Sep 20th, 2026"
-            credentialId="7b6c197e-d663-44e4-b455-1d0c864e1425"
+            issueDate={new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            credentialId="SAMPLE-CERT-2026"
           />
         </div>
 
@@ -84,7 +90,7 @@ function PreviewContent() {
         <Button variant="outline" render={<Link href={`/events/new/template`} />}>
           Back
         </Button>
-        <Button render={<Link href={`/events/evt-language-proficiency/issue?template=${templateId}`} />}>
+        <Button render={<Link href={`/events/${eventSlug}/issue?template=${templateId}`} />}>
           Looks good, continue
           <ArrowRight data-icon="inline-end" />
         </Button>

@@ -1,27 +1,26 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
+import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
 import { 
-  ArrowLeft, 
-  Send, 
+  Award, 
+  Search, 
   Download, 
   ExternalLink, 
   ShieldCheck, 
   ShieldX, 
-  Users, 
-  RefreshCw, 
   AlertTriangle, 
   X, 
-  Loader2 
+  Loader2, 
+  Filter,
+  RefreshCw
 } from "lucide-react"
 import { toast } from "sonner"
 import { AppShell } from "@/components/dashboard/app-shell"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -30,11 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty"
-import { CountUp } from "@/components/dashboard/count-up"
-import { resolveTemplate } from "@/lib/templates"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import { formatDate } from "@/lib/format"
-import type { EventDetail, CertificateSummary } from "@/lib/types"
+import type { CertificateSummary } from "@/lib/types"
 
 const statusStyles: Record<string, string> = {
   Issued: "bg-success/10 text-success border-success/20",
@@ -52,57 +49,52 @@ function getInitials(name: string) {
     .toUpperCase()
 }
 
-export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const [detail, setDetail] = useState<EventDetail | null>(null)
+export default function CertificatesRegistryPage() {
+  const [certificates, setCertificates] = useState<CertificateSummary[]>([])
   const [loading, setLoading] = useState(true)
-  const [isPolling, setIsPolling] = useState(false)
-
-  // Revocation state
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"All" | "Issued" | "Revoked">("All")
+  
+  // Revocation modal state
   const [revokingCert, setRevokingCert] = useState<CertificateSummary | null>(null)
   const [revocationReason, setRevocationReason] = useState("")
   const [isSubmittingRevocation, setIsSubmittingRevocation] = useState(false)
 
   const verificationBase = process.env.NEXT_PUBLIC_VERIFICATION_URL || "http://localhost:5001"
 
-  async function loadDetail() {
+  async function loadCertificates() {
+    setLoading(true)
     try {
-      const res = await fetch(`/api/events/${encodeURIComponent(id)}`)
-      if (res.status === 404) {
-        notFound()
-      }
-      if (!res.ok) throw new Error("Could not load event")
+      const res = await fetch("/api/certificates?page=1&pageSize=100")
+      if (!res.ok) throw new Error("Failed to load certificates")
       const data = await res.json()
-      setDetail(data)
+      setCertificates(data.items || [])
     } catch (err: any) {
-      toast.error("Failed to load event details", { description: err.message })
+      toast.error("Could not load certificates", { description: err.message })
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadDetail()
-  }, [id])
+    loadCertificates()
+  }, [])
 
-  async function handlePollNow() {
-    setIsPolling(true)
-    try {
-      const res = await fetch(`/api/events/${encodeURIComponent(id)}/poll`, { method: "POST" })
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || "Event has no active Google Sheets configuration to poll.")
-      }
-      toast.success("Poll triggered", { description: "Checked linked Google Form responses for new entries." })
-      await loadDetail()
-    } catch (err: any) {
-      toast.info("Sheets Polling Info", {
-        description: err.message || "Configure Google Sheets credentials in appsettings.json to enable auto-sync.",
-      })
-    } finally {
-      setIsPolling(false)
-    }
-  }
+  const filteredCertificates = useMemo(() => {
+    return certificates.filter((cert) => {
+      const matchesStatus = statusFilter === "All" || cert.status === statusFilter
+      const q = search.toLowerCase().trim()
+      if (!q) return matchesStatus
+
+      const matchesSearch =
+        cert.participantName.toLowerCase().includes(q) ||
+        cert.certificateNumber.toLowerCase().includes(q) ||
+        (cert.participantEmail && cert.participantEmail.toLowerCase().includes(q)) ||
+        cert.eventName.toLowerCase().includes(q)
+
+      return matchesStatus && matchesSearch
+    })
+  }, [certificates, search, statusFilter])
 
   async function handleConfirmRevocation() {
     if (!revokingCert) return
@@ -129,20 +121,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       })
 
       // Update local state
-      if (detail) {
-        setDetail({
-          ...detail,
-          certificates: {
-            ...detail.certificates,
-            items: detail.certificates.items.map((c) =>
-              c.publicId === revokingCert.publicId
-                ? { ...c, status: "Revoked", revokedAt: new Date().toISOString(), revocationReason: revocationReason.trim() }
-                : c
-            ),
-          },
-        })
-      }
-
+      setCertificates((prev) =>
+        prev.map((c) =>
+          c.publicId === revokingCert.publicId
+            ? { ...c, status: "Revoked", revokedAt: new Date().toISOString(), revocationReason: revocationReason.trim() }
+            : c
+        )
+      )
       setRevokingCert(null)
       setRevocationReason("")
     } catch (err: any) {
@@ -152,99 +137,65 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  if (loading) {
-    return (
-      <AppShell>
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </div>
-      </AppShell>
-    )
-  }
-
-  if (!detail) {
-    return (
-      <AppShell>
-        <div className="p-8 text-center text-muted-foreground">Event not found.</div>
-      </AppShell>
-    )
-  }
-
-  const template = resolveTemplate(detail.templateId)
-  const credentialList = detail.certificates?.items || []
-  const progress = detail.totalCount > 0 ? Math.round((detail.issuedCount / detail.totalCount) * 100) : 0
-
   return (
     <AppShell
       action={
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePollNow}
-            disabled={isPolling}
-            title="Poll linked Google Sheet responses"
-          >
-            <RefreshCw className={`size-3.5 ${isPolling ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Sync Responses</span>
-          </Button>
-          <Button render={<Link href={`/events/${detail.eventId}/issue`} />}>
-            <Send data-icon="inline-start" />
-            Issue Credentials
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={loadCertificates} disabled={loading}>
+          <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
       }
     >
-      <Link
-        href="/events"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Back to events
-      </Link>
+      <div className="mb-8 flex flex-col gap-1.5">
+        <h1 className="font-serif text-3xl font-semibold text-foreground">Certificate Registry</h1>
+        <p className="text-sm text-muted-foreground">
+          Complete audit trail of all credentials issued across your cohorts. Directly download signed PDFs, audit verification, or manage revocations.
+        </p>
+      </div>
 
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2">
-            <h1 className="font-serif text-2xl font-semibold text-foreground sm:text-3xl">{detail.eventName}</h1>
-            <span
-              className="rounded-full px-2.5 py-0.5 text-xs font-medium border"
-              style={{ 
-                backgroundColor: template.accentSoft, 
-                color: template.accent,
-                borderColor: `${template.accent}40`
-              }}
+      {/* Filters & Search Toolbar */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by recipient, cert #, email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Filter className="size-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Status:</span>
+          {(["All", "Issued", "Revoked"] as const).map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => setStatusFilter(filter)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                statusFilter === filter
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+              }`}
             >
-              {template.name}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">Event ID: <span className="font-mono">{detail.eventId}</span></p>
-        </div>
-        <div className="flex min-w-48 flex-col gap-1.5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Users className="size-3.5" />
-              <CountUp value={detail.issuedCount} /> / {detail.totalCount} issued
-            </span>
-            <span className="font-medium text-foreground">
-              <CountUp value={progress} />%
-            </span>
-          </div>
-          <Progress value={progress} className="h-1.5" />
+              {filter}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-base font-semibold text-foreground">Cohort Credentials ({credentialList.length})</h2>
-      </div>
-
-      {credentialList.length > 0 ? (
+      {loading ? (
+        <div className="flex h-48 items-center justify-center">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : filteredCertificates.length > 0 ? (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Recipient</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>Event / Cohort</TableHead>
                 <TableHead>Certificate #</TableHead>
                 <TableHead>Issued</TableHead>
                 <TableHead>Status</TableHead>
@@ -252,7 +203,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </TableRow>
             </TableHeader>
             <TableBody>
-              {credentialList.map((cert: CertificateSummary) => (
+              {filteredCertificates.map((cert) => (
                 <TableRow key={cert.publicId}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
@@ -261,11 +212,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           {getInitials(cert.participantName)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium text-foreground">{cert.participantName}</span>
+                      <div>
+                        <p className="font-medium text-foreground">{cert.participantName}</p>
+                        <p className="text-xs text-muted-foreground">{cert.participantEmail || "—"}</p>
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">{cert.participantEmail ?? "—"}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{cert.certificateNumber}</TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium text-foreground">{cert.eventName}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono text-xs text-muted-foreground">{cert.certificateNumber}</span>
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {cert.issuedAt ? formatDate(cert.issuedAt) : "—"}
                   </TableCell>
@@ -286,7 +244,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         title="Download cryptographically signed PDF"
                       >
                         <Download className="size-3.5" />
-                        <span className="hidden sm:inline">PDF</span>
+                        <span className="hidden lg:inline">PDF</span>
                       </a>
 
                       {/* Verify on independent portal */}
@@ -295,13 +253,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        title="Open verification in independent portal"
+                        title="Open in independent verification portal"
                       >
                         <ExternalLink className="size-3.5" />
-                        <span className="hidden sm:inline">Verify</span>
+                        <span className="hidden lg:inline">Verify</span>
                       </a>
 
-                      {/* Revoke */}
+                      {/* Revoke button */}
                       {cert.status !== "Revoked" ? (
                         <button
                           type="button"
@@ -313,7 +271,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           title="Revoke certificate"
                         >
                           <ShieldX className="size-3.5" />
-                          <span className="hidden sm:inline">Revoke</span>
+                          <span className="hidden lg:inline">Revoke</span>
                         </button>
                       ) : (
                         <span
@@ -334,17 +292,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <Send />
+              <Award />
             </EmptyMedia>
-            <EmptyTitle>No credentials issued yet</EmptyTitle>
-            <EmptyDescription>Issue your first batch of credentials for this event using manual entry or CSV upload.</EmptyDescription>
+            <EmptyTitle>No certificates found</EmptyTitle>
+            <EmptyDescription>
+              {search || statusFilter !== "All"
+                ? "No credentials match your search criteria."
+                : "No certificates have been issued yet. Create an event to begin."}
+            </EmptyDescription>
           </EmptyHeader>
-          <EmptyContent>
-            <Button render={<Link href={`/events/${detail.eventId}/issue`} />}>
-              <Send data-icon="inline-start" />
-              Issue credentials
-            </Button>
-          </EmptyContent>
         </Empty>
       )}
 
@@ -373,11 +329,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </p>
 
             <div className="mt-4">
-              <label htmlFor="modal-revocation-reason" className="block text-xs font-medium text-foreground mb-1.5">
+              <label htmlFor="revocation-reason" className="block text-xs font-medium text-foreground mb-1.5">
                 Revocation Reason (Required for audit trail)
               </label>
               <textarea
-                id="modal-revocation-reason"
+                id="revocation-reason"
                 rows={3}
                 placeholder="e.g. Issued in error, failed requirements, or student requested replacement"
                 value={revocationReason}

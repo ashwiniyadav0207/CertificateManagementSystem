@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Suspense, useState, useRef } from "react"
+import { Suspense, useState, useEffect } from "react"
 import { useParams, useSearchParams, useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, Send, Sheet, FileSpreadsheet, UserPlus } from "lucide-react"
 import { toast } from "sonner"
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CsvDropzone } from "@/components/issue/csv-dropzone"
+import { CsvDropzone, type ParsedRecipient } from "@/components/issue/csv-dropzone"
 import { ManualRecipients } from "@/components/issue/manual-recipients"
 import { GoogleSheetsPanel } from "@/components/issue/google-sheets-panel"
 import { credentialTemplates } from "@/lib/templates"
@@ -37,76 +37,98 @@ function IssueContent() {
   const [consent, setConsent] = useState(false)
   const [recipientsValid, setRecipientsValid] = useState(false)
   const [manualRecipients, setManualRecipients] = useState<Recipient[]>([])
+  const [csvRecipients, setCsvRecipients] = useState<ParsedRecipient[]>([])
   const [mode, setMode] = useState("manual")
   const [submitting, setSubmitting] = useState(false)
-  const manualRef = useRef<HTMLFormElement>(null)
+  const [eventName, setEventName] = useState(params.id)
+
+  useEffect(() => {
+    // Try to get real event name from API
+    fetch(`/api/events/${encodeURIComponent(params.id)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.eventName) setEventName(data.eventName)
+      })
+      .catch(() => {})
+  }, [params.id])
+
+  const activeRecipientCount = mode === "manual" ? manualRecipients.filter((r) => r.name.trim()).length : csvRecipients.length
+  const canSubmit = consent && !submitting && (
+    (mode === "manual" && recipientsValid && manualRecipients.length > 0) ||
+    (mode === "csv" && csvRecipients.length > 0)
+  )
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
 
     try {
-      // Gather recipients from the active tab
       let recipients: Recipient[] = []
-      
+
       if (mode === "manual") {
-        recipients = manualRecipients.filter(r => r.name.trim())
+        recipients = manualRecipients.filter((r) => r.name.trim())
+      } else if (mode === "csv") {
+        recipients = csvRecipients
       }
 
       if (recipients.length === 0) {
-        toast.error("No recipients", { description: "Add at least one recipient before issuing." })
+        toast.error("No recipients", { description: "Add or upload at least one recipient before issuing." })
         setSubmitting(false)
         return
       }
 
-      // Get real event name from draft if available
-      let realEventName = params.id
-      try {
-        const raw = window.sessionStorage.getItem("credentia:event-draft")
-        if (raw) {
-          realEventName = JSON.parse(raw).name || params.id
-        }
-      } catch {}
-
-      // Use batch issue for multiple or single issue for one
       if (recipients.length === 1) {
         const res = await fetch("/api/issue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName: recipients[0].name, eventId: params.id, eventName: realEventName }),
+          body: JSON.stringify({
+            fullName: recipients[0].name,
+            email: recipients[0].email,
+            eventId: params.id,
+            eventName: eventName,
+          }),
         })
         if (!res.ok) {
           const raw = await res.text()
-          let errStr = `HTTP ${res.status}: ${raw.slice(0, 60)}`
-          try { errStr = JSON.parse(raw).error || errStr } catch {}
+          let errStr = `HTTP ${res.status}: ${raw.slice(0, 80)}`
+          try {
+            errStr = JSON.parse(raw).error || errStr
+          } catch {}
           throw new Error(errStr)
         }
-        toast.success("Certificate issued", {
-          description: `Certificate created for ${recipients[0].name}.`,
+        toast.success("Certificate Issued", {
+          description: `Cryptographically signed certificate created for ${recipients[0].name}.`,
         })
       } else {
         const res = await fetch("/api/issue/batch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipients, eventId: params.id, eventName: realEventName }),
+          body: JSON.stringify({
+            recipients,
+            eventId: params.id,
+            eventName: eventName,
+            templateId,
+          }),
         })
         if (!res.ok) {
           const raw = await res.text()
-          let errStr = `HTTP ${res.status}: ${raw.slice(0, 60)}`
-          try { errStr = JSON.parse(raw).error || errStr } catch {}
+          let errStr = `HTTP ${res.status}: ${raw.slice(0, 80)}`
+          try {
+            errStr = JSON.parse(raw).error || errStr
+          } catch {}
           throw new Error(errStr)
         }
         const results = await res.json()
         const succeeded = results.filter((r: any) => r.success).length
-        toast.success("Issuance started", {
-          description: `${succeeded} of ${recipients.length} certificates created. Recipients will receive an email with a link to their certificate.`,
+        toast.success("Batch Issuance Complete", {
+          description: `Successfully issued ${succeeded} of ${recipients.length} certificates.`,
         })
       }
 
       router.push(`/events/${params.id}`)
     } catch (err: any) {
       toast.error("Issuance failed", {
-        description: err.message || "Something went wrong. Please try again.",
+        description: err.message || "Something went wrong. Please check your data.",
       })
       setSubmitting(false)
     }
@@ -123,10 +145,9 @@ function IssueContent() {
       </Link>
 
       <div className="mb-8 flex flex-col gap-1.5">
-        <h1 className="font-serif text-2xl font-semibold text-foreground sm:text-3xl">Issue credentials</h1>
+        <h1 className="font-serif text-2xl font-semibold text-foreground sm:text-3xl">Issue Credentials</h1>
         <p className="max-w-xl text-sm text-muted-foreground">
-          Add recipients manually, upload a spreadsheet, or sync a Google Sheet. Each recipient will get an
-          emailed link to their certificate on your selected design.
+          Issue verified certificates for <strong className="text-foreground">{eventName}</strong>. Enter recipients manually or drop a CSV file with your recipient list.
         </p>
       </div>
 
@@ -136,11 +157,11 @@ function IssueContent() {
             <TabsList>
               <TabsTrigger value="manual">
                 <UserPlus data-icon="inline-start" />
-                Manual
+                Manual Entry
               </TabsTrigger>
               <TabsTrigger value="csv">
                 <FileSpreadsheet data-icon="inline-start" />
-                Upload CSV
+                Upload CSV ({csvRecipients.length})
               </TabsTrigger>
               <TabsTrigger value="sheets">
                 <Sheet data-icon="inline-start" />
@@ -148,13 +169,18 @@ function IssueContent() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="manual" className="mt-5">
-              <ManualRecipients onChange={(valid, recs) => {
-                setRecipientsValid(valid)
-                setManualRecipients(recs)
-              }} />
+              <ManualRecipients
+                onChange={(valid, recs) => {
+                  setRecipientsValid(valid)
+                  setManualRecipients(recs)
+                }}
+              />
             </TabsContent>
             <TabsContent value="csv" className="mt-5">
-              <CsvDropzone onFileAccepted={() => {}} />
+              <CsvDropzone
+                onFileAccepted={(_file, recs) => setCsvRecipients(recs)}
+                onReset={() => setCsvRecipients([])}
+              />
             </TabsContent>
             <TabsContent value="sheets" className="mt-5">
               <GoogleSheetsPanel />
@@ -163,10 +189,10 @@ function IssueContent() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <FieldLabel htmlFor="credential-template">Credential template</FieldLabel>
+          <FieldLabel htmlFor="credential-template">Certificate Design Template</FieldLabel>
           <Select value={templateId} onValueChange={(v) => setTemplateId(String(v))}>
             <SelectTrigger id="credential-template" className="mt-2 w-full sm:w-80">
-              <SelectValue placeholder="Select credential template" />
+              <SelectValue placeholder="Select template" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -183,9 +209,9 @@ function IssueContent() {
             </SelectContent>
           </Select>
 
-          <label className="mt-5 flex items-start gap-2.5 text-sm text-foreground">
+          <label className="mt-5 flex items-start gap-2.5 text-sm text-foreground cursor-pointer">
             <Checkbox checked={consent} onCheckedChange={(v) => setConsent(Boolean(v))} className="mt-0.5" />
-            I have the right to use the personal data of these recipients
+            <span>I confirm that these recipient records are authentic and authorized for credential issuance.</span>
           </label>
         </div>
 
@@ -193,16 +219,16 @@ function IssueContent() {
           <Button type="button" variant="outline" render={<Link href={`/events/${params.id}`} />}>
             Cancel
           </Button>
-          <Button type="submit" disabled={!consent || (mode === "manual" && !recipientsValid) || submitting}>
+          <Button type="submit" disabled={!canSubmit}>
             {submitting ? (
               <>
                 <Loader2 data-icon="inline-start" className="animate-spin" />
-                Issuing…
+                Signing & Issuing…
               </>
             ) : (
               <>
                 <Send data-icon="inline-start" />
-                Issue credentials
+                Issue {activeRecipientCount > 0 ? `${activeRecipientCount} ` : ""}Credentials
               </>
             )}
           </Button>

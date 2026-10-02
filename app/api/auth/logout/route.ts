@@ -18,7 +18,9 @@ export async function POST(request: Request) {
       body: JSON.stringify(body),
     });
 
-    return new NextResponse(null, { status: 204 });
+    const res = new NextResponse(null, { status: 204 });
+    res.cookies.delete('credentia-session');
+    return res;
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

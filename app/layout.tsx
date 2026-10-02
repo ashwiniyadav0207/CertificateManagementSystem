@@ -24,9 +24,9 @@ const fontMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Credentia — Certificate Management',
+  title: 'NGO Certificate Operations — Admin Console',
   description:
-    'Issue, sign, and verify tamper-evident digital certificates for your events and programs.',
+    'Administrative portal for issuing, tracking, and managing verified credentials for your NGO programs and cohorts.',
   icons: {
     icon: [
       {
