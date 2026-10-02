@@ -1,5 +1,0 @@
-C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\_validation\engine\CertificateEngine.pdb
-C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\_validation\engine\Assets/Fonts/OFL.txt
-C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\_validation\engine\aspnetcorev2_inprocess.dll
-C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\_validation\engine\e_sqlite3.dll
-C:\Users\Harshit\Downloads\CERTIFICATE\CERTIFICATE\artifacts\_validation\engine\CertificateEngine.exe

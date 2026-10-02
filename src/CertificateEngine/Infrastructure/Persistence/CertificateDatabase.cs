@@ -13,9 +13,20 @@ public sealed class CertificateDatabase
         // Resolve relative runtime data beside the process working directory, not the
         // single-file extraction directory. This keeps the engine and verifier's shared
         // data path predictable when distributed as standalone executables.
-        DataDirectory = Path.IsPathRooted(options.Value.DataDirectory)
-            ? options.Value.DataDirectory
-            : Path.GetFullPath(options.Value.DataDirectory);
+        if (Path.IsPathRooted(options.Value.DataDirectory))
+        {
+            DataDirectory = options.Value.DataDirectory;
+        }
+        else
+        {
+            var candidates = new[]
+            {
+                Path.GetFullPath(Path.Combine("..", "..", options.Value.DataDirectory)),
+                Path.GetFullPath(Path.Combine("..", options.Value.DataDirectory)),
+                Path.GetFullPath(options.Value.DataDirectory)
+            };
+            DataDirectory = candidates.FirstOrDefault(Directory.Exists) ?? candidates.Last();
+        }
         Directory.CreateDirectory(DataDirectory);
 
         var databasePath = Path.Combine(DataDirectory, "certificates.db");
@@ -115,6 +126,15 @@ public sealed class CertificateDatabase
             BEGIN
                 SELECT RAISE(ABORT, 'audit events are append-only');
             END;
+
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'admin',
+                created_at TEXT NOT NULL
+            );
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }

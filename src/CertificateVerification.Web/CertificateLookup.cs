@@ -46,8 +46,9 @@ public sealed class CertificateLookup(IOptions<VerificationOptions> options)
             cms.CheckSignature(verifySignatureOnly: true);
             var signer = cms.SignerInfos.Count == 1 ? cms.SignerInfos[0].Certificate : null;
             if (signer is null) return false;
-            using var root = X509Certificate2.CreateFromPemFile(ResolvePath(_options.TrustedRootPath));
+            using var root = X509Certificate2.CreateFromPem(File.ReadAllText(ResolvePath(_options.TrustedRootPath)));
             using var chain = new X509Chain();
+            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
             chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
             chain.ChainPolicy.CustomTrustStore.Add(root);
             chain.ChainPolicy.ExtraStore.AddRange(cms.Certificates);
@@ -62,23 +63,40 @@ public sealed class CertificateLookup(IOptions<VerificationOptions> options)
         }
     }
 
-    private static string ResolvePath(string path) => Path.IsPathRooted(path) ? path : Path.GetFullPath(path, AppContext.BaseDirectory);
+    private static string ResolvePath(string path)
+    {
+        if (Path.IsPathRooted(path)) return path;
+        var candidates = new[]
+        {
+            Path.GetFullPath(path),
+            Path.GetFullPath(Path.Combine("..", "..", path)),
+            Path.GetFullPath(Path.Combine("..", path)),
+            Path.GetFullPath(path, AppContext.BaseDirectory),
+        };
+        foreach (var candidate in candidates)
+        {
+            if (File.Exists(candidate) || Directory.Exists(candidate))
+                return candidate;
+        }
+        return candidates[0];
+    }
 
     private string ResolveDataDirectory()
     {
-        if (!string.Equals(_options.DataDirectory, "data", StringComparison.OrdinalIgnoreCase))
-        {
-            return ResolvePath(_options.DataDirectory);
-        }
+        var dataDir = string.IsNullOrWhiteSpace(_options.DataDirectory) ? "data" : _options.DataDirectory;
+        if (Path.IsPathRooted(dataDir)) return dataDir;
 
         var candidates = new[]
         {
-            Path.Combine(AppContext.BaseDirectory, "data"),
+            Path.GetFullPath(Path.Combine("..", "..", dataDir)),
+            Path.GetFullPath(Path.Combine("..", dataDir)),
+            Path.GetFullPath(dataDir),
+            Path.GetFullPath(Path.Combine("..", "CertificateEngine", dataDir)),
+            Path.Combine(AppContext.BaseDirectory, dataDir),
             Path.GetFullPath("../certificate-engine/data", AppContext.BaseDirectory),
-            Path.GetFullPath("../../../../CertificateEngine/bin/Release/net8.0/data", AppContext.BaseDirectory),
-            Path.Combine(Directory.GetCurrentDirectory(), "data")
         };
         return candidates.FirstOrDefault(candidate => File.Exists(Path.Combine(candidate, "certificates.db")))
+            ?? candidates.FirstOrDefault(Directory.Exists)
             ?? candidates[0];
     }
 }

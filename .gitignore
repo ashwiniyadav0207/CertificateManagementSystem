@@ -1,6 +1,8 @@
 .vs/
 .vscode/
 .idea/
+[Bb]in/
+[Oo]bj/
 *.user
 *.suo
 *.pfx
@@ -32,6 +34,7 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 CertificateManagementSystem-main/
 AGENTS.md
+CLAUDE.md
 .gemini/
 tsconfig.tsbuildinfo
 *.png

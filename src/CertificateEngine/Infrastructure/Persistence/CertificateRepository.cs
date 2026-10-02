@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using CertificateEngine.Api;
 using CertificateEngine.Configuration;
 using CertificateEngine.Domain;
 using CertificateEngine.Infrastructure.Audit;
@@ -520,4 +521,270 @@ public sealed class CertificateRepository(CertificateDatabase database)
 
     private static string Truncate(string value, int maximumLength) =>
         value.Length <= maximumLength ? value : value[..maximumLength];
+
+    public static CertificateSummaryDto ToSummaryDto(CertificateRecord c) => new(
+        c.PublicId,
+        c.CertificateNumber,
+        c.ParticipantName,
+        c.ParticipantEmail,
+        c.EventId,
+        c.EventName,
+        c.TemplateId,
+        c.Status.ToString(),
+        Format(c.CreatedAt),
+        c.IssuedAt is null ? null : Format(c.IssuedAt.Value),
+        c.RevokedAt is null ? null : Format(c.RevokedAt.Value),
+        c.RevocationReason);
+
+    public async Task<UserRecord?> FindUserByEmailAsync(string email, CancellationToken cancellationToken)
+    {
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT id, name, email, password_hash, role, created_at FROM users WHERE email = $email LIMIT 1;";
+        command.Parameters.AddWithValue("$email", email.Trim().ToLowerInvariant());
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken)) return null;
+        return new UserRecord(
+            reader.GetInt64(0),
+            reader.GetString(1),
+            reader.GetString(2),
+            reader.GetString(3),
+            reader.GetString(4),
+            ParseDate(reader.GetString(5)));
+    }
+
+    public async Task<UserRecord?> FindUserByIdAsync(long id, CancellationToken cancellationToken)
+    {
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT id, name, email, password_hash, role, created_at FROM users WHERE id = $id LIMIT 1;";
+        command.Parameters.AddWithValue("$id", id);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken)) return null;
+        return new UserRecord(
+            reader.GetInt64(0),
+            reader.GetString(1),
+            reader.GetString(2),
+            reader.GetString(3),
+            reader.GetString(4),
+            ParseDate(reader.GetString(5)));
+    }
+
+    public async Task<UserRecord> CreateUserAsync(string name, string email, string passwordHash, string role, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO users (name, email, password_hash, role, created_at)
+            VALUES ($name, $email, $passwordHash, $role, $createdAt)
+            RETURNING id;
+            """;
+        command.Parameters.AddWithValue("$name", name.Trim());
+        command.Parameters.AddWithValue("$email", email.Trim().ToLowerInvariant());
+        command.Parameters.AddWithValue("$passwordHash", passwordHash);
+        command.Parameters.AddWithValue("$role", string.IsNullOrWhiteSpace(role) ? "admin" : role.Trim());
+        command.Parameters.AddWithValue("$createdAt", Format(now));
+        var id = Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture);
+        return new UserRecord(id, name.Trim(), email.Trim().ToLowerInvariant(), passwordHash, role, now);
+    }
+
+    public async Task<IReadOnlyList<EventSummaryDto>> GetEventSummariesAsync(IReadOnlyList<EventSourceOptions> configuredEvents, CancellationToken cancellationToken)
+    {
+        var statsByEvent = new Dictionary<string, (int Total, int Issued, string? Earliest)>(StringComparer.OrdinalIgnoreCase);
+
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT event_id,
+                   COUNT(*) as total_count,
+                   SUM(CASE WHEN status = 'Issued' THEN 1 ELSE 0 END) as issued_count,
+                   MIN(created_at) as earliest_created_at
+            FROM certificates
+            GROUP BY event_id;
+            """;
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var eventId = reader.GetString(0);
+                var total = reader.GetInt32(1);
+                var issued = reader.IsDBNull(2) ? 0 : Convert.ToInt32(reader.GetValue(2), CultureInfo.InvariantCulture);
+                var earliest = reader.IsDBNull(3) ? null : reader.GetString(3);
+                statsByEvent[eventId] = (total, issued, earliest);
+            }
+        }
+
+        var result = new List<EventSummaryDto>();
+        var seenEventIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var ev in configuredEvents)
+        {
+            seenEventIds.Add(ev.EventId);
+            statsByEvent.TryGetValue(ev.EventId, out var stat);
+            result.Add(new EventSummaryDto(
+                ev.EventId,
+                ev.EventName,
+                ev.TemplateId,
+                stat.Earliest,
+                stat.Issued,
+                stat.Total));
+        }
+
+        foreach (var (eventId, stat) in statsByEvent)
+        {
+            if (seenEventIds.Add(eventId))
+            {
+                var metaCmd = connection.CreateCommand();
+                metaCmd.CommandText = "SELECT event_name, template_id FROM certificates WHERE event_id = $eventId LIMIT 1;";
+                metaCmd.Parameters.AddWithValue("$eventId", eventId);
+                var evName = eventId;
+                var tmplId = "default";
+                await using var metaReader = await metaCmd.ExecuteReaderAsync(cancellationToken);
+                if (await metaReader.ReadAsync(cancellationToken))
+                {
+                    evName = metaReader.GetString(0);
+                    tmplId = metaReader.GetString(1);
+                }
+
+                result.Add(new EventSummaryDto(
+                    eventId,
+                    evName,
+                    tmplId,
+                    stat.Earliest,
+                    stat.Issued,
+                    stat.Total));
+            }
+        }
+
+        return result;
+    }
+
+    public async Task<EventDetailDto?> GetEventDetailAsync(string eventId, IReadOnlyList<EventSourceOptions> configuredEvents, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        var ev = configuredEvents.FirstOrDefault(e => string.Equals(e.EventId, eventId, StringComparison.OrdinalIgnoreCase));
+        string eventName = ev?.EventName ?? eventId;
+        string templateId = ev?.TemplateId ?? "default";
+
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+
+        var statsCmd = connection.CreateCommand();
+        statsCmd.CommandText = """
+            SELECT event_name, template_id,
+                   COUNT(*) as total_count,
+                   SUM(CASE WHEN status = 'Issued' THEN 1 ELSE 0 END) as issued_count,
+                   MIN(created_at) as earliest_created_at
+            FROM certificates
+            WHERE event_id = $eventId
+            GROUP BY event_id;
+            """;
+        statsCmd.Parameters.AddWithValue("$eventId", eventId);
+
+        int totalCount = 0;
+        int issuedCount = 0;
+        string? earliest = null;
+        bool foundInDb = false;
+
+        await using (var reader = await statsCmd.ExecuteReaderAsync(cancellationToken))
+        {
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                foundInDb = true;
+                if (ev is null)
+                {
+                    eventName = reader.GetString(0);
+                    templateId = reader.GetString(1);
+                }
+                totalCount = reader.GetInt32(2);
+                issuedCount = reader.IsDBNull(3) ? 0 : Convert.ToInt32(reader.GetValue(3), CultureInfo.InvariantCulture);
+                earliest = reader.IsDBNull(4) ? null : reader.GetString(4);
+            }
+        }
+
+        if (ev is null && !foundInDb)
+        {
+            return null;
+        }
+
+        var offset = (page - 1) * pageSize;
+        var certsCmd = connection.CreateCommand();
+        certsCmd.CommandText = """
+            SELECT * FROM certificates
+            WHERE event_id = $eventId
+            ORDER BY id DESC
+            LIMIT $limit OFFSET $offset;
+            """;
+        certsCmd.Parameters.AddWithValue("$eventId", eventId);
+        certsCmd.Parameters.AddWithValue("$limit", pageSize);
+        certsCmd.Parameters.AddWithValue("$offset", offset);
+
+        var items = new List<CertificateSummaryDto>();
+        await using (var reader = await certsCmd.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                items.Add(ToSummaryDto(ReadCertificate(reader)));
+            }
+        }
+
+        var paginated = new PaginatedResultDto<CertificateSummaryDto>(items, page, pageSize, totalCount);
+        return new EventDetailDto(eventId, eventName, templateId, earliest, issuedCount, totalCount, paginated);
+    }
+
+    public async Task<PaginatedResultDto<CertificateSummaryDto>> GetCertificatesPaginatedAsync(
+        int page,
+        int pageSize,
+        string? eventId,
+        string? status,
+        string? search,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+
+        var whereClauses = new List<string>();
+        var parameters = new List<(string Name, object Value)>();
+
+        if (!string.IsNullOrWhiteSpace(eventId))
+        {
+            whereClauses.Add("event_id = $eventId");
+            parameters.Add(("$eventId", eventId.Trim()));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            whereClauses.Add("status = $status COLLATE NOCASE");
+            parameters.Add(("$status", status.Trim()));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            whereClauses.Add("(participant_name LIKE $search OR certificate_number LIKE $search OR public_id LIKE $search)");
+            parameters.Add(("$search", $"%{search.Trim()}%"));
+        }
+
+        var whereSql = whereClauses.Count > 0 ? "WHERE " + string.Join(" AND ", whereClauses) : "";
+
+        var countCmd = connection.CreateCommand();
+        countCmd.CommandText = $"SELECT COUNT(*) FROM certificates {whereSql};";
+        foreach (var p in parameters) countCmd.Parameters.AddWithValue(p.Name, p.Value);
+        var totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture);
+
+        var offset = (page - 1) * pageSize;
+        var dataCmd = connection.CreateCommand();
+        dataCmd.CommandText = $"SELECT * FROM certificates {whereSql} ORDER BY id DESC LIMIT $limit OFFSET $offset;";
+        foreach (var p in parameters) dataCmd.Parameters.AddWithValue(p.Name, p.Value);
+        dataCmd.Parameters.AddWithValue("$limit", pageSize);
+        dataCmd.Parameters.AddWithValue("$offset", offset);
+
+        var items = new List<CertificateSummaryDto>();
+        await using (var reader = await dataCmd.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                items.Add(ToSummaryDto(ReadCertificate(reader)));
+            }
+        }
+
+        return new PaginatedResultDto<CertificateSummaryDto>(items, page, pageSize, totalCount);
+    }
 }

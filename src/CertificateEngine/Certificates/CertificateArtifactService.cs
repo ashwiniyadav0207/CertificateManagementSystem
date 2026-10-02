@@ -32,7 +32,7 @@ public sealed class CertificateArtifactService : IDisposable
                 X509KeyStorageFlags.EphemeralKeySet | X509KeyStorageFlags.Exportable);
             if (!_signingCertificate.HasPrivateKey)
                 throw new InvalidOperationException("Signing:PfxPath does not contain a private key.");
-            _trustedRoot = X509Certificate2.CreateFromPemFile(ResolvePath(_signing.TrustedRootPath));
+            _trustedRoot = X509Certificate2.CreateFromPem(File.ReadAllText(ResolvePath(_signing.TrustedRootPath)));
         }
     }
 
@@ -125,7 +125,26 @@ public sealed class CertificateArtifactService : IDisposable
             GlobalFontSettings.FontResolver ??= new EmbeddedFontResolver();
         }
     }
-    private static string ResolvePath(string path) => Path.IsPathRooted(path) ? path : Path.GetFullPath(path, AppContext.BaseDirectory);
+    private static string ResolvePath(string path)
+    {
+        if (Path.IsPathRooted(path)) return path;
+
+        var candidates = new[]
+        {
+            Path.GetFullPath(path),
+            Path.GetFullPath(Path.Combine("..", "..", path)),
+            Path.GetFullPath(Path.Combine("..", path)),
+            Path.GetFullPath(path, AppContext.BaseDirectory),
+        };
+
+        foreach (var candidate in candidates)
+        {
+            if (File.Exists(candidate) || Directory.Exists(candidate))
+                return candidate;
+        }
+
+        return candidates[0];
+    }
     public void Dispose()
     {
         _signingCertificate?.Dispose();
