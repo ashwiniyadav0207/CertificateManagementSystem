@@ -1,0 +1,98 @@
+"use client"
+
+import { useState } from "react"
+import { Check, Copy, Download } from "lucide-react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { LinkedinIcon } from "@/components/linkedin-icon"
+
+interface CredentialActionsProps {
+  publicId: string
+  participantName: string
+  eventName: string
+  issuedAt: string | null
+}
+
+async function downloadCertificate(publicId: string) {
+  try {
+    const res = await fetch(`/api/certificates/${encodeURIComponent(publicId)}/download`)
+    if (!res.ok) {
+      // Fallback to print dialog
+      toast.info("Print dialog opened", {
+        description: 'Choose "Save as PDF" as the destination to download your certificate.',
+      })
+      window.print()
+      return
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `certificate-${publicId.slice(0, 8)}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success("Certificate downloaded")
+  } catch {
+    // Fallback to print dialog
+    toast.info("Print dialog opened", {
+      description: 'Choose "Save as PDF" as the destination to download your certificate.',
+    })
+    window.print()
+  }
+}
+
+export function CredentialActions({
+  publicId,
+  participantName,
+  eventName,
+  issuedAt,
+}: CredentialActionsProps) {
+  const [copied, setCopied] = useState(false)
+  const verifyUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/credentials/${publicId}`
+      : `/credentials/${publicId}`
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(verifyUrl)
+      setCopied(true)
+      toast.success("Verification link copied")
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error("Couldn't copy the link", { description: "Copy it from your browser's address bar." })
+    }
+  }
+
+  const issueDate = issuedAt ? new Date(issuedAt) : new Date()
+  const linkedInUrl =
+    "https://www.linkedin.com/profile/edit/?trk=certificate_add_url" +
+    `&name=${encodeURIComponent(eventName)}` +
+    `&organizationName=${encodeURIComponent("Credentia")}` +
+    `&issueYear=${issueDate.getFullYear()}` +
+    `&issueMonth=${issueDate.getMonth() + 1}` +
+    `&certUrl=${encodeURIComponent(verifyUrl)}`
+
+  return (
+    <>
+      <Button className="w-full justify-start" onClick={() => downloadCertificate(publicId)}>
+        <Download data-icon="inline-start" />
+        Download certificate
+      </Button>
+      <Button
+        variant="outline"
+        className="w-full justify-start"
+        render={<a href={linkedInUrl} target="_blank" rel="noopener noreferrer" />}
+      >
+        <LinkedinIcon className="size-4" data-icon="inline-start" />
+        Add to LinkedIn profile
+      </Button>
+      <Button variant="outline" className="w-full justify-start" onClick={copyLink}>
+        {copied ? <Check data-icon="inline-start" className="text-success" /> : <Copy data-icon="inline-start" />}
+        {copied ? "Copied" : "Copy verification link"}
+      </Button>
+    </>
+  )
+}
