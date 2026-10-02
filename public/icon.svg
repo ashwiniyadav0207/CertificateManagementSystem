@@ -1,0 +1,52 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shield background with gradient -->
+  <defs>
+    <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563EB;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="leafGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0D9488;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main shield outline -->
+  <path d="M256 48 L432 120 L432 280 C432 368 384 432 256 464 C128 432 80 368 80 280 L80 120 L256 48 Z" 
+        fill="url(#shieldGradient)" 
+        stroke="url(#shieldGradient)" 
+        stroke-width="16"/>
+  
+  <!-- Inner shield white background -->
+  <path d="M256 88 L400 144 L400 272 C400 344 364 396 256 424 C148 396 112 344 112 272 L112 144 L256 88 Z" 
+        fill="white" 
+        opacity="0.95"/>
+  
+  <!-- Document/Certificate icon -->
+  <rect x="180" y="160" width="152" height="180" rx="8" fill="white" stroke="#3B82F6" stroke-width="8"/>
+  
+  <!-- Document lines -->
+  <line x1="200" y1="200" x2="280" y2="200" stroke="#3B82F6" stroke-width="6" stroke-linecap="round"/>
+  <line x1="200" y1="230" x2="312" y2="230" stroke="#3B82F6" stroke-width="6" stroke-linecap="round"/>
+  <line x1="200" y1="260" x2="280" y2="260" stroke="#3B82F6" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- Folded corner -->
+  <path d="M300 160 L332 160 L332 192 Z" fill="#E0E7FF"/>
+  
+  <!-- Leaf element (bottom left) -->
+  <ellipse cx="140" cy="340" rx="60" ry="90" fill="url(#leafGradient)" transform="rotate(-25 140 340)"/>
+  <path d="M120 300 Q140 340 140 380" stroke="white" stroke-width="4" stroke-linecap="round" fill="none"/>
+  
+  <!-- Checkmark badge (emerald circle with checkmark) -->
+  <circle cx="300" cy="320" r="40" fill="#10B981"/>
+  <circle cx="300" cy="320" r="40" fill="url(#leafGradient)"/>
+  <path d="M280 320 L295 335 L320 305" 
+        stroke="white" 
+        stroke-width="8" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="none"/>
+  
+  <!-- Ribbon tails under badge -->
+  <path d="M300 360 L290 390 L300 380 L310 390 Z" fill="#2563EB" opacity="0.8"/>
+</svg>
