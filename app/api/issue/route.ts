@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { fullName, eventName } = body;
+    const { fullName, eventId, eventName } = body;
     const engineUrl = getEngineUrl();
     const apiKey = getApiKey();
     
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
         'Content-Type': 'application/json',
         'X-Api-Key': apiKey,
       },
-      body: JSON.stringify({ fullName, eventName }),
+      body: JSON.stringify({ fullName, eventId, eventName }),
     });
     
     if (!response.ok) {

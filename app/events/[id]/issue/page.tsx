@@ -59,12 +59,21 @@ function IssueContent() {
         return
       }
 
+      // Get real event name from draft if available
+      let realEventName = params.id
+      try {
+        const raw = window.sessionStorage.getItem("credentia:event-draft")
+        if (raw) {
+          realEventName = JSON.parse(raw).name || params.id
+        }
+      } catch {}
+
       // Use batch issue for multiple or single issue for one
       if (recipients.length === 1) {
         const res = await fetch("/api/issue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName: recipients[0].name, eventName: params.id }),
+          body: JSON.stringify({ fullName: recipients[0].name, eventId: params.id, eventName: realEventName }),
         })
         if (!res.ok) {
           const raw = await res.text()
@@ -79,7 +88,7 @@ function IssueContent() {
         const res = await fetch("/api/issue/batch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipients, eventName: params.id }),
+          body: JSON.stringify({ recipients, eventId: params.id, eventName: realEventName }),
         })
         if (!res.ok) {
           const raw = await res.text()
