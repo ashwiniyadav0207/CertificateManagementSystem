@@ -20,7 +20,8 @@ export async function POST(request: Request) {
     });
     
     if (!response.ok) {
-      return NextResponse.json({ error: 'Issuing failed' }, { status: response.status });
+      const errText = await response.text().catch(() => '');
+      return NextResponse.json({ error: errText || 'Issuing failed' }, { status: response.status });
     }
     
     const data = await response.json();
